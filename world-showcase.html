@@ -82,11 +82,6 @@
     <div class="row-ctrl"><label>Асфальт</label><input type="color" id="c-road" value="#546E7A"></div>
     <div class="row-ctrl"><label>Разметка</label><input type="color" id="c-dash" value="#EEEEEE"></div>
     <div class="row-ctrl"><label>Обочина</label><input type="color" id="c-curb" value="#78909C"></div>
-    <div class="row-ctrl"><label>Надпись</label><input type="color" id="c-roadtext" value="#FFFFFF"></div>
-    <div style="margin-top:6px">
-      <input id="road-text" type="text" value="HAVAL"
-        style="width:100%;background:#111;border:1px solid #444;color:#fff;padding:4px 6px;border-radius:4px;font-family:inherit;font-size:11px">
-    </div>
   </div>
 
   <div class="section">
@@ -171,7 +166,6 @@ const C = {
   log:           0x8D6E63,
   logcap:        0x6D4C41,
   lily:          0x2E7D32,
-  roadtext:      0xFFFFFF,
 };
 
 function hexToInt(hex) { return parseInt(hex.replace('#',''), 16); }
@@ -285,25 +279,6 @@ function createTree() {
   return g;
 }
 
-// Road text marking
-function makeRoadTextMesh(text, color) {
-  const canvas = document.createElement('canvas');
-  canvas.width = 256; canvas.height = 64;
-  const ctx = canvas.getContext('2d');
-  ctx.clearRect(0, 0, 256, 64);
-  ctx.fillStyle = '#' + color.toString(16).padStart(6, '0');
-  ctx.font = 'bold 44px Arial Black, Arial';
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.letterSpacing = '6px';
-  ctx.fillText(text, 128, 32);
-  const tex = new THREE.CanvasTexture(canvas);
-  return new THREE.Mesh(
-    new THREE.PlaneGeometry(ROW_WIDTH * 0.7, ROW_SIZE * 0.55),
-    new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false })
-  );
-}
-
 // Road row
 function buildRoadRow(sx, z) {
   const g = new THREE.Group();
@@ -401,16 +376,6 @@ function buildAll() {
     const g1 = buildForestRow(SECTION_X[1], z, r); scene.add(g1); allGroups.push(g1);
     const g2 = buildRoadRow  (SECTION_X[2], z   ); scene.add(g2); allGroups.push(g2);
     const g3 = buildWaterRow (SECTION_X[3], z, r); scene.add(g3); allGroups.push(g3);
-
-    // Надпись на среднем ряду дороги
-    if (r === 1) {
-      const txt = document.getElementById('road-text')?.value || 'HAVAL';
-      const roadTextMesh = makeRoadTextMesh(txt, C.roadtext);
-      roadTextMesh.rotation.x = -Math.PI / 2;
-      roadTextMesh.position.set(SECTION_X[2], 0.02, z);
-      scene.add(roadTextMesh);
-      allGroups.push(roadTextMesh);
-    }
   }
 }
 
@@ -454,10 +419,7 @@ const colorMap = {
   'c-log':           'log',
   'c-logcap':        'logcap',
   'c-lily':          'lily',
-  'c-roadtext':      'roadtext',
 };
-
-document.getElementById('road-text')?.addEventListener('input', buildAll);
 
 Object.entries(colorMap).forEach(([id, key]) => {
   const el = document.getElementById(id);
