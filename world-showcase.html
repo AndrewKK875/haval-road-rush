@@ -117,15 +117,15 @@ document.body.appendChild(renderer.domElement);
 // ── Scene ─────────────────────────────────────────────────────────────────────
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x6EC6F5);
-scene.fog = new THREE.FogExp2(0x6EC6F5, 0.04);
 
 // ── Camera ────────────────────────────────────────────────────────────────────
-const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 200);
-camera.position.set(0, 22, 20);
+const camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 500);
+camera.position.set(0, 28, 28);
 camera.lookAt(0, 0, -6);
 
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.target.set(0, 0, -6);
+controls.update();
 controls.enablePan = true;
 controls.minDistance = 6;
 controls.maxDistance = 60;
