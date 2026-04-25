@@ -103,6 +103,12 @@
       <button onclick="addLabel()" style="flex:1;background:rgba(255,107,0,0.3);border:1px solid #FF6B00;color:#FF6B00;padding:5px;border-radius:4px;cursor:pointer;font-size:10px">+ Добавить</button>
       <button onclick="clearLabels()" style="flex:1;background:rgba(255,255,255,0.05);border:1px solid #555;color:#aaa;padding:5px;border-radius:4px;cursor:pointer;font-size:10px">Очистить</button>
     </div>
+    <div id="lbl-move" style="display:none;margin-top:8px;border-top:1px solid #333;padding-top:8px">
+      <div style="color:#76ff03;font-size:9px;margin-bottom:4px;letter-spacing:1px">ПЕРЕМЕЩЕНИЕ</div>
+      <div class="row-ctrl"><label>← X →</label><input type="range" id="lbl-x" min="-60" max="60" value="0" step="1" oninput="moveLabel()"></div>
+      <div class="row-ctrl"><label>↑ Z ↓</label><input type="range" id="lbl-z" min="-40" max="40" value="0" step="1" oninput="moveLabel()"></div>
+      <div class="row-ctrl"><label>Поворот</label><input type="range" id="lbl-rot" min="-180" max="180" value="0" step="1" oninput="moveLabel()"></div>
+    </div>
   </div>
 
   <div class="section">
@@ -456,17 +462,16 @@ Object.entries(colorMap).forEach(([id, key]) => {
 const labelMeshes = [];
 
 window.addLabel = function() {
-  const text    = document.getElementById('lbl-text').value.trim() || 'HAVAL';
-  const size    = parseInt(document.getElementById('lbl-size').value);
-  const color   = document.getElementById('lbl-color').value;
-  const secIdx  = parseInt(document.getElementById('lbl-surface').value);
-  const sx      = SECTION_X[secIdx];
-  const z       = -1 * ROW_SIZE - ROW_SIZE / 2; // средний ряд секции
+  const text   = document.getElementById('lbl-text').value.trim() || 'HAVAL';
+  const size   = parseInt(document.getElementById('lbl-size').value);
+  const color  = document.getElementById('lbl-color').value;
+  const secIdx = parseInt(document.getElementById('lbl-surface').value);
+  const sx     = SECTION_X[secIdx];
+  const z      = -1 * ROW_SIZE - ROW_SIZE / 2;
 
-  // Canvas → texture
-  const canvas  = document.createElement('canvas');
-  canvas.width  = 512; canvas.height = 128;
-  const ctx     = canvas.getContext('2d');
+  const canvas = document.createElement('canvas');
+  canvas.width = 512; canvas.height = 128;
+  const ctx    = canvas.getContext('2d');
   ctx.clearRect(0, 0, 512, 128);
   ctx.fillStyle = color;
   ctx.font      = `bold ${size * 2}px Arial Black, Arial`;
@@ -476,21 +481,37 @@ window.addLabel = function() {
 
   const mesh = new THREE.Mesh(
     new THREE.PlaneGeometry(ROW_WIDTH * 0.85, ROW_SIZE * 0.7),
-    new THREE.MeshBasicMaterial({
-      map: new THREE.CanvasTexture(canvas),
-      transparent: true,
-      depthWrite: false,
-    })
+    new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(canvas), transparent: true, depthWrite: false })
   );
   mesh.rotation.x = -Math.PI / 2;
   mesh.position.set(sx, 0.02, z);
+  mesh.userData.baseX = sx;
+  mesh.userData.baseZ = z;
   scene.add(mesh);
   labelMeshes.push(mesh);
+
+  // Показать панель перемещения и сбросить слайдеры
+  document.getElementById('lbl-move').style.display = 'block';
+  document.getElementById('lbl-x').value   = 0;
+  document.getElementById('lbl-z').value   = 0;
+  document.getElementById('lbl-rot').value = 0;
+};
+
+window.moveLabel = function() {
+  const mesh = labelMeshes[labelMeshes.length - 1];
+  if (!mesh) return;
+  const dx  = parseFloat(document.getElementById('lbl-x').value)   * 0.1;
+  const dz  = parseFloat(document.getElementById('lbl-z').value)   * 0.1;
+  const rot = parseFloat(document.getElementById('lbl-rot').value) * Math.PI / 180;
+  mesh.position.x = mesh.userData.baseX + dx;
+  mesh.position.z = mesh.userData.baseZ + dz;
+  mesh.rotation.z = rot;
 };
 
 window.clearLabels = function() {
   labelMeshes.forEach(m => scene.remove(m));
   labelMeshes.length = 0;
+  document.getElementById('lbl-move').style.display = 'none';
 };
 
 // ── Resize ────────────────────────────────────────────────────────────────────
