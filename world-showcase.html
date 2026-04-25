@@ -99,6 +99,12 @@
   </div>
 </div>
 
+<div id="section-labels">
+  <div class="slabel">ТРАВА<div class="sub">grass</div></div>
+  <div class="slabel">ЛЕС<div class="sub">forest</div></div>
+  <div class="slabel">ДОРОГА<div class="sub">road</div></div>
+  <div class="slabel">ВОДА<div class="sub">water</div></div>
+</div>
 
 <div id="hint">Перетащи — вращение · Колесо — зум · Меняй цвета слева — сцена обновится</div>
 
@@ -117,15 +123,15 @@ document.body.appendChild(renderer.domElement);
 // ── Scene ─────────────────────────────────────────────────────────────────────
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x6EC6F5);
+scene.fog = new THREE.FogExp2(0x6EC6F5, 0.04);
 
 // ── Camera ────────────────────────────────────────────────────────────────────
-const camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 500);
-camera.position.set(0, 28, 28);
-camera.lookAt(0, 0, -6);
+const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 200);
+camera.position.set(0, 18, 22);
+camera.lookAt(0, 0, -4);
 
 const controls = new OrbitControls(camera, renderer.domElement);
-controls.target.set(0, 0, -6);
-controls.update();
+controls.target.set(0, 0, -4);
 controls.enablePan = true;
 controls.minDistance = 6;
 controls.maxDistance = 60;
@@ -169,19 +175,12 @@ const C = {
 
 function hexToInt(hex) { return parseInt(hex.replace('#',''), 16); }
 
-// ── 2×2 Grid layout ───────────────────────────────────────────────────────────
-// [Трава]  [Лес]
-// [Дорога] [Вода]
-const COL_X = [-7.6, 7.6];               // левая и правая колонка
-const ROW_Z = [0, -7.5];                 // верхняя и нижняя строка (Z offset)
-const ROWS_PER_SEC = 3;
+// ── Sections: 4 types × 3 rows each ──────────────────────────────────────────
+// Layout: sections side by side along X, rows along Z
+// Section X offsets: -19.8, -6.6, 6.6, 19.8 (spacing = ROW_WIDTH + 2)
 
-const GRID = [
-  { type: 'grass',  sx: COL_X[0], zBase: ROW_Z[0] },
-  { type: 'forest', sx: COL_X[1], zBase: ROW_Z[0] },
-  { type: 'road',   sx: COL_X[0], zBase: ROW_Z[1] },
-  { type: 'water',  sx: COL_X[1], zBase: ROW_Z[1] },
-];
+const SECTION_X   = [-19.8, -6.6, 6.6, 19.8];
+const ROWS_PER_SEC = 3;
 
 // All meshes grouped by section for easy rebuild
 const sections = { grass: [], forest: [], road: [], water: [] };
@@ -394,35 +393,31 @@ function buildAll() {
   allGroups.forEach(g => scene.remove(g));
   allGroups.length = 0;
 
-  GRID.forEach(({ type, sx, zBase }) => {
-    for (let r = 0; r < ROWS_PER_SEC; r++) {
-      const z = zBase - r * ROW_SIZE - ROW_SIZE / 2;
-      let g;
-      if      (type === 'grass')  g = buildGrassRow (sx, z, r);
-      else if (type === 'forest') g = buildForestRow(sx, z, r);
-      else if (type === 'road')   g = buildRoadRow  (sx, z);
-      else                        g = buildWaterRow (sx, z, r);
-      scene.add(g);
-      allGroups.push(g);
+  for (let r = 0; r < ROWS_PER_SEC; r++) {
+    const z = -r * ROW_SIZE - ROW_SIZE / 2;
 
-      // Надпись на среднем ряду дороги
-      if (type === 'road' && r === 1) {
-        const txt = document.getElementById('road-text')?.value || 'HAVAL';
-        const roadTextMesh = makeRoadTextMesh(txt, C.roadtext);
-        roadTextMesh.rotation.x = -Math.PI / 2;
-        roadTextMesh.position.set(sx, 0.02, z);
-        scene.add(roadTextMesh);
-        allGroups.push(roadTextMesh);
-      }
+    const g0 = buildGrassRow (SECTION_X[0], z, r); scene.add(g0); allGroups.push(g0);
+    const g1 = buildForestRow(SECTION_X[1], z, r); scene.add(g1); allGroups.push(g1);
+    const g2 = buildRoadRow  (SECTION_X[2], z   ); scene.add(g2); allGroups.push(g2);
+    const g3 = buildWaterRow (SECTION_X[3], z, r); scene.add(g3); allGroups.push(g3);
+
+    // Надпись на среднем ряду дороги
+    if (r === 1) {
+      const txt = document.getElementById('road-text')?.value || 'HAVAL';
+      const roadTextMesh = makeRoadTextMesh(txt, C.roadtext);
+      roadTextMesh.rotation.x = -Math.PI / 2;
+      roadTextMesh.position.set(SECTION_X[2], 0.02, z);
+      scene.add(roadTextMesh);
+      allGroups.push(roadTextMesh);
     }
-  });
+  }
 }
 
 buildAll();
 
 // ── Section label sprites ─────────────────────────────────────────────────────
 const TYPE_LABELS = ['ТРАВА', 'ЛЕС', 'ДОРОГА', 'ВОДА'];
-GRID.forEach(({ sx, zBase }, i) => {
+SECTION_X.forEach((sx, i) => {
   const canvas = document.createElement('canvas');
   canvas.width = 256; canvas.height = 64;
   const ctx = canvas.getContext('2d');
@@ -436,7 +431,7 @@ GRID.forEach(({ sx, zBase }, i) => {
     new THREE.PlaneGeometry(3.5, 0.88),
     new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false, side: THREE.DoubleSide })
   );
-  mesh.position.set(sx, 2.2, zBase + 0.5);
+  mesh.position.set(sx, 2.2, 0.5);
   mesh.rotation.x = -Math.PI / 6;
   scene.add(mesh);
 });
