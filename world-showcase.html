@@ -171,6 +171,7 @@ const C = {
   log:           0x8D6E63,
   logcap:        0x6D4C41,
   lily:          0x2E7D32,
+  roadtext:      0xFFFFFF,
 };
 
 function hexToInt(hex) { return parseInt(hex.replace('#',''), 16); }
@@ -456,7 +457,6 @@ const colorMap = {
   'c-roadtext':      'roadtext',
 };
 
-C.roadtext = 0xFFFFFF;
 document.getElementById('road-text')?.addEventListener('input', buildAll);
 
 Object.entries(colorMap).forEach(([id, key]) => {
