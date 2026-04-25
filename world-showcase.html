@@ -85,6 +85,27 @@
   </div>
 
   <div class="section">
+    <h3>✏️ НАДПИСИ НА ПОВЕРХНОСТИ</h3>
+    <div class="row-ctrl"><label>Текст</label></div>
+    <input id="lbl-text" type="text" value="HAVAL"
+      style="width:100%;background:#111;border:1px solid #444;color:#fff;padding:4px 6px;border-radius:4px;font-family:inherit;font-size:11px;margin-bottom:6px">
+    <div class="row-ctrl"><label>Размер</label><input type="range" id="lbl-size" min="12" max="72" value="36"></div>
+    <div class="row-ctrl"><label>Цвет</label><input type="color" id="lbl-color" value="#FFFFFF"></div>
+    <div class="row-ctrl"><label>Поверхность</label>
+      <select id="lbl-surface" style="background:#111;border:1px solid #444;color:#fff;padding:2px 4px;border-radius:4px;font-size:10px">
+        <option value="0">Трава</option>
+        <option value="1">Лес</option>
+        <option value="2" selected>Дорога</option>
+        <option value="3">Вода</option>
+      </select>
+    </div>
+    <div style="display:flex;gap:6px;margin-top:6px">
+      <button onclick="addLabel()" style="flex:1;background:rgba(255,107,0,0.3);border:1px solid #FF6B00;color:#FF6B00;padding:5px;border-radius:4px;cursor:pointer;font-size:10px">+ Добавить</button>
+      <button onclick="clearLabels()" style="flex:1;background:rgba(255,255,255,0.05);border:1px solid #555;color:#aaa;padding:5px;border-radius:4px;cursor:pointer;font-size:10px">Очистить</button>
+    </div>
+  </div>
+
+  <div class="section">
     <h3>💧 ВОДА</h3>
     <div class="row-ctrl"><label>Вода 1</label><input type="color" id="c-water1" value="#1E88E5"></div>
     <div class="row-ctrl"><label>Вода 2</label><input type="color" id="c-water2" value="#1976D2"></div>
@@ -118,18 +139,17 @@ document.body.appendChild(renderer.domElement);
 // ── Scene ─────────────────────────────────────────────────────────────────────
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x6EC6F5);
-scene.fog = new THREE.FogExp2(0x6EC6F5, 0.04);
 
 // ── Camera ────────────────────────────────────────────────────────────────────
-const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 200);
-camera.position.set(0, 18, 22);
+const camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 0.1, 300);
+camera.position.set(0, 20, 24);
 camera.lookAt(0, 0, -4);
 
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.target.set(0, 0, -4);
 controls.enablePan = true;
 controls.minDistance = 6;
-controls.maxDistance = 60;
+controls.maxDistance = 80;
 controls.maxPolarAngle = Math.PI / 2.1;
 controls.update();
 
@@ -174,7 +194,7 @@ function hexToInt(hex) { return parseInt(hex.replace('#',''), 16); }
 // Layout: sections side by side along X, rows along Z
 // Section X offsets: -19.8, -6.6, 6.6, 19.8 (spacing = ROW_WIDTH + 2)
 
-const SECTION_X   = [-19.8, -6.6, 6.6, 19.8];
+const SECTION_X   = [-15.0, -5.0, 5.0, 15.0];
 const ROWS_PER_SEC = 3;
 
 // All meshes grouped by section for easy rebuild
@@ -397,7 +417,7 @@ SECTION_X.forEach((sx, i) => {
     new THREE.PlaneGeometry(3.5, 0.88),
     new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false, side: THREE.DoubleSide })
   );
-  mesh.position.set(sx, 2.2, 0.5);
+  mesh.position.set(sx, 2.0, 0.8);
   mesh.rotation.x = -Math.PI / 6;
   scene.add(mesh);
 });
@@ -431,6 +451,47 @@ Object.entries(colorMap).forEach(([id, key]) => {
     buildAll();
   });
 });
+
+// ── Надписи на поверхностях ───────────────────────────────────────────────────
+const labelMeshes = [];
+
+window.addLabel = function() {
+  const text    = document.getElementById('lbl-text').value.trim() || 'HAVAL';
+  const size    = parseInt(document.getElementById('lbl-size').value);
+  const color   = document.getElementById('lbl-color').value;
+  const secIdx  = parseInt(document.getElementById('lbl-surface').value);
+  const sx      = SECTION_X[secIdx];
+  const z       = -1 * ROW_SIZE - ROW_SIZE / 2; // средний ряд секции
+
+  // Canvas → texture
+  const canvas  = document.createElement('canvas');
+  canvas.width  = 512; canvas.height = 128;
+  const ctx     = canvas.getContext('2d');
+  ctx.clearRect(0, 0, 512, 128);
+  ctx.fillStyle = color;
+  ctx.font      = `bold ${size * 2}px Arial Black, Arial`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(text, 256, 64);
+
+  const mesh = new THREE.Mesh(
+    new THREE.PlaneGeometry(ROW_WIDTH * 0.85, ROW_SIZE * 0.7),
+    new THREE.MeshBasicMaterial({
+      map: new THREE.CanvasTexture(canvas),
+      transparent: true,
+      depthWrite: false,
+    })
+  );
+  mesh.rotation.x = -Math.PI / 2;
+  mesh.position.set(sx, 0.02, z);
+  scene.add(mesh);
+  labelMeshes.push(mesh);
+};
+
+window.clearLabels = function() {
+  labelMeshes.forEach(m => scene.remove(m));
+  labelMeshes.length = 0;
+};
 
 // ── Resize ────────────────────────────────────────────────────────────────────
 window.addEventListener('resize', () => {
